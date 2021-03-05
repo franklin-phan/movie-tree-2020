@@ -1,0 +1,310 @@
+# movie-tree-2020
+
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Movies 2020</title>
+		<style>
+			/* Put the box in the center of the page */
+			body, html {
+				/* height: 100%;
+				display: flex;
+				justify-content: center;
+				align-items: center; */
+			}
+	
+			/* set the CSS */
+		
+			.node circle {
+				fill: #fff;
+				stroke: steelblue;
+				stroke-width: 3px;
+			}
+		
+			.node text {
+				font: 10px sans-serif;
+			}
+		
+			.node--internal text {
+				text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+			}
+		
+			.link {
+				fill: none;
+				stroke: #ccc;
+				stroke-width: 2px;
+			}
+		</style>
+	</head>
+	<body>
+
+		<svg id="svg" width="3000" height="3000"></svg>
+
+		<script src="https://d3js.org/d3.v6.min.js"></script>
+		<script>
+			/* 
+				Layout: Tree 
+				This a tough one. To make the tree you need to arrange the data in
+				a tree structure. You'll need to think about how the children 
+				relate to the parent. 
+				Your object should look like this: 
+				{
+					name: 'film',
+					children: [
+						{ name: 'comedy', children: [
+                            {name:'low budget'},children:[] }
+					]
+				}
+				Every object has a name and children array. All children have names and
+				an array children. See the pattern.
+				Here is an example worth looking at: 
+				http://bl.ocks.org/robschmuecker/6afc2ecb05b191359862
+				https://bl.ocks.org
+				The example uses the Ramen data. The data includes the follow fields: 
+				Review #, Brand, Variety, Style, Country, Stars, Top Ten
+				To make a tree I needed to rearrange the data so that it was a 
+				hierarchy in the form shown above. I arranged the data on style which 
+				is cup, bowl, pack etc. 
+				- Ramen
+					- Style 
+						- brand/varieties
+				{
+					name: "Ramen",
+					children: [
+						{ 
+							name: 'cup', children: [], 
+							name: 'bowl', children: [],
+							...
+						}
+					]
+				}
+				The sort data is a single list with not hierarchy. You need to 
+				arrange the data!
+				Note! There seems to be a lot of duplicates in the list. removing these
+				would clean things up a lot! 
+				Note! I had a hard time controlling the spacing of nodes in the chart. 
+				Not sure what I'm missing. This might require some research. 
+				
+			*/
+
+			// Load data 
+			d3.csv('https://gist.githubusercontent.com/franklin-phan/746c9d483d404d340b54fba4dee7480a/raw/e2026303452a17c58bffd00dcd49e7fd19a45976/Movies2020')
+				.then(handleData)
+			// Handle loaded data with a function
+			function handleData(data) {
+				
+				// To get started I made unique lists of 
+				// Find unique 
+				function findUnique(data, prop) {
+					return Array.from(new Set(data.map(obj => obj[prop])))
+				}
+
+				// Review #, Brand, Variety, Style, Country, Stars, Top Ten
+				const movieTitles = findUnique(data, 'MovieTitle')
+				const genreTypes = findUnique(data, 'Genre')
+				const ifFavorite = findUnique(data, 'Favorite')
+				const IMDBscore = findUnique(data, 'IMDBScore')
+				const RTscore = findUnique(data, 'RottenTomatoesScore')
+				const Pscore = findUnique(data, 'PersonalScore')
+				// TODO: Create a hieracrhy 
+				// Ramen
+				//   - Brand
+				//     - Style <- show styles for each brand
+
+				console.log(genreTypes)
+
+				// TODO: There are many duplicates for each ramen! 
+				// The duplicates need to be removed! 
+
+				// Here we create a top level of styles and children matching the style
+			
+				/*
+				const titles = Pscore.reduce((acc,name) => {
+					acc[name] = {}
+					const titleForScore = Array.from(new Set(data
+						.filter(d => d.PersonalScore === name)
+						.map(o => o.MovieTitle)))
+
+					acc[name].children = titleForScore.map(d => ({ name: d }))
+					return acc
+				},{})
+				*/
+				const scores = genreTypes.reduce((acc, genre) => {
+					acc[genre] = {}
+					const scoreForGenre = Array.from(new Set(data
+						.filter(d => d.Genre === genre)
+						.map(o => o.PersonalScore)))
+						
+					const titles = Pscore.reduce((acc,title) => {
+						acc[title] = {}
+						const titleForScore = Array.from(new Set(data
+							.filter(d => d.Genre === genre)
+							.filter(d => d.PersonalScore === title)
+							.map(o => o.MovieTitle)))
+						
+							const favorites = movieTitles.reduce((acc,fav) => {
+								acc[fav] = {}
+								const favoriteForTitle = Array.from(new Set(data
+									.filter(d => d.Genre === genre)
+									.filter(d => d.PersonalScore === title)
+									.filter(d => d.MovieTitle === fav)
+									.map(o => o.Favorite)))
+								
+								//console.log('favoriteForTitle')
+			
+								//console.log(favoriteForTitle)
+			
+								acc[fav].children = favoriteForTitle.map(d => ({ name: d }))
+								return acc
+							},{})
+						acc[title].children = titleForScore.map(d => ({ name: d, info:favorites[d].children }))
+						return acc
+					},{})
+
+					
+					//console.log('scoreForGenre')
+					//console.log(scoreForGenre)
+
+					console.log('titleForScore')
+					console.log(titles)
+					
+					acc[genre].children = scoreForGenre.map(d => ({ name: d, children:titles[d].children}))
+					return acc
+				}, {})
+
+				
+
+				
+				const favorites = movieTitles.reduce((acc,name) => {
+					acc[name] = {}
+					const favoriteForTitle = Array.from(new Set(data
+						.filter(d => d.MovieTitle === name)
+						.map(o => o.Favorite)))
+					
+					//console.log('favoriteForTitle')
+
+					//console.log(favoriteForTitle)
+
+					acc[name].children = favoriteForTitle.map(d => ({ name: d }))
+					return acc
+				},{})
+				
+
+				// Investigate this for duplicates. Take a look in the console
+				// look at the children array under each style. Since we used 
+				// Brand there are many duplicates. 
+				console.log(scores) 
+
+
+				// Make hierarchical object
+				const films = {
+					name: 'Movies 2020',
+					children: genreTypes.map(name => {
+						return {
+							name, 
+							
+							children: scores[name].children
+					
+						}
+						
+					})
+				}
+
+				// Check the final hierarchy object here. This 
+				// is what D3 will be starting with. 
+
+				// console.log(ramen)
+
+				
+				// Set the area to work with. NOTE! I had a lot of trouble 
+				// controlling the size. I'm obviously missing something. 
+				const width = 950
+				const height = 2800
+
+				// Create a treemap
+				const treemap = d3.tree()
+					.size([height, width])
+
+				// Create a d3 hierarchy
+				let nodes = d3.hierarchy(films)
+				// Add the hierarchy to the treemap to get the nodes
+				nodes = treemap(nodes)
+				
+				// Start drawing! 
+				// Style the svg container
+				const svg = d3.select('#svg')
+					.style('border', '1px solid')
+
+				// Append a group <g> to act as a container
+				const g = svg.append('g')
+					.attr('transform', `translate(90, 50)`)
+
+				// Draw the links
+				// Find everything with class `link'
+				const link = g.selectAll('.link')
+					// Use the descendants
+					.data(nodes.descendants().slice(1))
+					.enter()
+					// Append a path
+					.append('path')
+					// Add a class name
+					.attr('class', 'link')
+					// Set the style
+					.style('stroke', d => d.data.level)
+					// Add some data to the path this draws the line
+					// The examples I found all seemed to be drawing with raw data. 
+					// I feel like there should be native d3 method for this?
+					.attr('d', d => {
+						return `M${d.y},${d.x}C${(d.y + d.parent.y) / 2},${d.x} ${(d.y + d.parent.y) / 2},${d.parent.x} ${d.parent.y},${d.parent.x}`
+					});
+
+				
+				// Draw the nodes. These are the points where links meet
+				// Adds each node as a group
+				const node = g.selectAll('.node')
+					.data(nodes.descendants())
+					.enter().append('g')
+					.attr('class', d => `node ${d.children ? ' node--internal' : ' node--leaf'}`)
+					.attr('transform', d => `translate(${d.y},${d.x})`);
+
+
+				// You can use this to add a circle at each node. 
+				// // adds the circle to the node
+				node.append('circle')
+					// Set the size of the circle
+					.attr('r', 4)
+					// You could use some data to set the size of the cirles
+					// You'll need to add this data to the hierarchy! 
+					//  .attr("r", d => d.data.value)
+					.style("stroke", 'tomato')
+					.style('stroke', d => d.data.info !== undefined && d.data.info[0].name === "Favorite" ? 'blue':'black')
+
+					// The stroke could be based on data...
+					//.style("stroke", d => d.data.type)
+					// Set the fill
+					//.style('fill', '')
+					// Fill could be based on data
+					.style("fill", d => d.data.level);
+
+				// Add the text label
+				// append a text element
+				node.append('text')
+					// Position the text
+					.attr('dy', '0.35em')
+					// Nodes with children get moved to the left otherwise to the right
+					.attr('dx', d => d.children === undefined ? 10 : -10)
+					.style('text-anchor', d => d.children ? 'end' : 'start')
+					.style('color', d => d.data.info !== undefined ? 'blue':'black')
+						// check if data.info exists
+						// check if info is favorite
+						// if favorite show favorite color, else show other color
+
+					
+					//.attr('font-weight', d.data.Favorite = 'Favorite')
+					// Set the text in the label
+					.text(d => d.data.name);
+			}
+	</script>
+	</body>
+</html>
